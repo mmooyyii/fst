@@ -1,3 +1,3 @@
-module github.com/mmooyyii/fst.git
+module github.com/mmooyyii/fst
 
 go 1.18
