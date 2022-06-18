@@ -8,15 +8,15 @@ import (
 )
 
 type DebugEdge struct {
-	a      int
-	b      int
-	char   byte
-	output int
+	From   string `json:"from"`
+	To     string `json:"to"`
+	Char   byte   `json:"char"`
+	Output int    `json:"output"`
 }
 
 func (f *Fst) debug() {
-	ans := make([]DebugEdge, 0)
-	debugDfs(&f.DummyHead, ans)
+	ans := make([]*DebugEdge, 0)
+	debugDfs(&f.DummyHead, &ans)
 	data, err := json.Marshal(ans)
 	if err != nil {
 		panic(err)
@@ -24,15 +24,14 @@ func (f *Fst) debug() {
 	fmt.Println(string(data))
 }
 
-func debugDfs(node *Node, ans []DebugEdge) {
+func debugDfs(node *Node, ans *[]*DebugEdge) {
 	for char, next := range node.next {
-		ans = append(ans, DebugEdge{
-			a:      node.id,
-			b:      next.id,
-			char:   char,
-			output: node.output,
+		*ans = append(*ans, &DebugEdge{
+			From:   fmt.Sprintf("%d", node.incr),
+			To:     fmt.Sprintf("%d", next.node.incr),
+			Char:   char,
+			Output: next.output,
 		})
-		debugDfs(next, ans)
+		debugDfs(next.node, ans)
 	}
-
 }

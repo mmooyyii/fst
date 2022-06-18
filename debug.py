@@ -13,7 +13,7 @@ def draw_graph(edges):
     nx.draw(
         G, pos, edge_color='black', width=1, linewidths=1,
         node_size=500, node_color='pink', alpha=0.9,
-        labels={node: node for node in G.nodes()}
+        labels={node: "" for node in G.nodes()}
     )
     nx.draw_networkx_edge_labels(
         G, pos, font_color='red',
@@ -22,9 +22,10 @@ def draw_graph(edges):
     plt.show()
 
 
-import json
+graph = [{"from": "1", "to": "3", "char": 97, "output": 2}, {"from": "3", "to": "4", "char": 98, "output": 0},
+         {"from": "4", "to": "5", "char": 99, "output": 0}, {"from": "3", "to": "6", "char": 100, "output": 0},
+         {"from": "6", "to": "4", "char": 99, "output": 0}, {"from": "4", "to": "5", "char": 99, "output": 0},
+         {"from": "1", "to": "8", "char": 122, "output": 2}]
 
-graph = input()
-
-graph = [[i['a'], i['b'], i['char'] + ':' + i['output']] for i in json.loads(graph)]
+graph = [[i['from'], i['to'], chr(i['char']) + ':' + str(i['output'])] for i in graph]
 draw_graph(graph)
