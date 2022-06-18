@@ -23,9 +23,8 @@ def draw_graph(edges):
 
 
 graph = [{"from": "1", "to": "3", "char": 97, "output": 2}, {"from": "3", "to": "4", "char": 98, "output": 0},
-         {"from": "4", "to": "5", "char": 99, "output": 0}, {"from": "3", "to": "6", "char": 100, "output": 0},
-         {"from": "6", "to": "4", "char": 99, "output": 0}, {"from": "4", "to": "5", "char": 99, "output": 0},
-         {"from": "1", "to": "8", "char": 122, "output": 2}]
+         {"from": "4", "to": "5", "char": 99, "output": 0}, {"from": "3", "to": "4", "char": 100, "output": 0},
+         {"from": "4", "to": "5", "char": 99, "output": 0}, {"from": "1", "to": "8", "char": 122, "output": 2}]
 
 graph = [[i['from'], i['to'], chr(i['char']) + ':' + str(i['output'])] for i in graph]
 draw_graph(graph)

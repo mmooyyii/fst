@@ -13,24 +13,24 @@ const (
 	mod   = math.MaxUint32
 )
 
-type Hash uint32
+type hash uint32
 
-func (h Hash) Append(char byte) Hash {
+func (h hash) append(char byte) hash {
 	// 此处char+1是为了防止char全为0的不同长度的字符串的hash值都相同
-	return Hash((uint64(h)*prime + uint64(char) + 1) % mod)
+	return hash((uint64(h)*prime + uint64(char) + 1) % mod)
 }
 
 type number interface{ int | int32 | int64 | uint }
 
-func Min[T number](a, b T) T {
+func min[T number](a, b T) T {
 	if a < b {
 		return a
 	}
 	return b
 }
 
-func LongestPrefix(a, b []byte) int {
-	n := Min(len(a), len(b))
+func longestPrefix(a, b []byte) int {
+	n := min(len(a), len(b))
 	for i := 0; i < n; i++ {
 		if a[i] != b[i] {
 			return i
@@ -39,12 +39,12 @@ func LongestPrefix(a, b []byte) int {
 	return n
 }
 
-// SuffixHash 对于 "abc", 返回 [hash("abc"),hash("bc"),hash("c")]
-func SuffixHash(a []byte) []Hash {
-	ans := make([]Hash, len(a))
-	cur := Hash(0)
+// suffixHash 对于 "abc", 返回 [hash("abc"),hash("bc"),hash("c")]
+func suffixHash(a []byte) []hash {
+	ans := make([]hash, len(a))
+	cur := hash(0)
 	for i := len(a) - 1; i >= 0; i-- {
-		cur = cur.Append(a[i])
+		cur = cur.append(a[i])
 		ans[i] = cur
 	}
 	return ans

@@ -16,7 +16,7 @@ type DebugEdge struct {
 
 func (f *Fst) debug() {
 	ans := make([]*DebugEdge, 0)
-	debugDfs(&f.DummyHead, &ans)
+	debugDfs(&f.dummyHead, &ans)
 	data, err := json.Marshal(ans)
 	if err != nil {
 		panic(err)

@@ -1,6 +1,8 @@
 package fst
 
 import (
+	"context"
+	"fmt"
 	"testing"
 )
 
@@ -36,6 +38,9 @@ func TestNewFst2(t *testing.T) {
 	fst.Set([]byte("abc"), 999)
 	fst.Set([]byte("adc"), 2)
 	fst.Set([]byte("z"), 2)
+	for v := range fst.FuzzySearch(context.Background(), []byte("...")) {
+		fmt.Println(v)
+	}
 	//fst.debug()
-	//fmt.Println(1)
+	////fmt.Println(1)
 }
