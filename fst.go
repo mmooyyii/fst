@@ -3,28 +3,32 @@ package fst
 import (
 	"bytes"
 	"context"
-	"errors"
+	"sync/atomic"
 )
 
+var incr int32
+
 type Dict interface {
+	GetPre() []byte
 	Set(word []byte, output int) error
 	Search(word []byte) (int, bool)
 	FuzzySearch(ctx context.Context, pattern []byte) <-chan []byte
 }
 
-type Node struct {
-	next   map[byte]*Node // 记录下一个节点的位置
+type Edge struct {
+	node   *Node
 	output int
-	stop   bool
-	val    byte
+	stop   bool // 是否是一个单词的结束
 }
 
-func NewNode(val byte) *Node {
-	return &Node{next: make(map[byte]*Node, 0), val: val}
+type Node struct {
+	incr   int32
+	next   map[byte]*Edge // 记录下一个节点的位置
+	output int            // 只有在这是最后一个点的时候，才加上这里的output
 }
 
-func (node *Node) link(node2 *Node) {
-	node.next[node2.val] = node2
+func NewNode() *Node {
+	return &Node{next: make(map[byte]*Edge, 0), incr: atomic.AddInt32(&incr, 1)}
 }
 
 type Fst struct {
@@ -37,52 +41,56 @@ type Fst struct {
 }
 
 func NewFst() *Fst {
-	head := NewNode(0)
-	tail := NewNode(0)
+	head := NewNode()
+	tail := NewNode()
 	return &Fst{
 		DummyHead: *head,
 		DummyTail: *tail,
-		Count:     0,
-		Unfreeze:  make([]*Node, 0),
+		Unfreeze:  []*Node{head},
 		preWord:   make([]byte, 0),
+		TailHash:  make(map[Hash][]*Node, 0),
 	}
 }
 
-func (f *Fst) Set(word []byte, output int) error {
+func (f *Fst) Set(word []byte, output int) {
 	if bytes.Compare(word, f.preWord) != 1 {
-		return errors.New("word must be increasing")
+		panic("word must be increasing")
 	}
-	idx, output := f.Forward(word, output)
-	toFreeze := make([]*Node, 0)
-	copy(toFreeze, f.Unfreeze[idx:])
-	f.Unfreeze = f.Unfreeze[:idx]
-	// 把新加入的节点加入未冻结中
-	for _, v := range word[idx:] {
-		f.Unfreeze = append(f.Unfreeze, NewNode(v))
+	n := LongestPrefix(f.preWord, word) + 1
+	output = f.PutOutput(n-1, output)
+	f.freeze(n - 1)
+	f.Unfreeze = f.Unfreeze[:n]
+	preNode := f.Unfreeze[n-1]
+	for i, char := range word[n-1:] {
+		node := NewNode()
+		preNode.next[char] = &Edge{node: node, output: output, stop: i+n == len(word)}
+		preNode = node
+		output = 0
+		f.Unfreeze = append(f.Unfreeze, node)
 	}
-	// 把新加入的节点连起来
-	for i := idx; i < len(f.Unfreeze); i++ {
-		f.Unfreeze[i-1].link(f.Unfreeze[i])
-	}
-	f.MergeFreeze(toFreeze)
 	f.preWord = word
-	return nil
 }
+
+func (f *Fst) GetPreWord() []byte { return f.preWord }
 
 func (f *Fst) Search(word []byte) (int, bool) {
 	return f.search(&f.DummyHead, word)
 }
 
 func (f *Fst) search(curNode *Node, word []byte) (int, bool) {
-	var ok bool
 	sum := 0
+	var stop bool
 	for _, char := range word {
-		if curNode, ok = curNode.next[char]; !ok {
+		if edge, ok := curNode.next[char]; !ok {
 			return 0, false
+		} else {
+			curNode = edge.node
+			sum += edge.output
+			stop = edge.stop
 		}
-		sum += curNode.output
 	}
-	if curNode != &f.DummyTail {
+	sum += curNode.output
+	if !stop {
 		return 0, false
 	}
 	return sum, true
@@ -92,59 +100,55 @@ func (f *Fst) FuzzySearch(ctx context.Context, pattern []byte) <-chan []byte {
 	panic("implement me")
 }
 
-// Forward 在未冻结的节点中寻找最长公共前缀，并且调整output
-// 返回最长公共前缀之后的那个节点的索引和修改后的output
-func (f *Fst) Forward(word []byte, output int) (int, int) {
-	// 在未冻结部分向前传递的output
-	outputForward := 0
-	for i, v := range word {
-		if len(f.Unfreeze) == i {
-			f.DummyTail.output += outputForward
-			return i, output
+func (f *Fst) PutOutput(n int, output int) int {
+	forwardOutput := 0
+	for i, char := range f.preWord[:n] {
+		v := f.Unfreeze[i]
+		edge := v.next[char]
+		if forwardOutput > 0 {
+			edge.output += forwardOutput
 		}
-		if f.Unfreeze[i].val != v {
-			f.Unfreeze[i].output += outputForward
-			return i, output
-		}
-		if f.Unfreeze[i].output <= output {
-			output -= f.Unfreeze[i].output
+		if edge.output <= output {
+			output -= edge.output
 		} else {
-			f.Unfreeze[i].output -= output
-			outputForward = output
+			edge.output, forwardOutput = output, edge.output-output
 			output = 0
 		}
 	}
-	return len(f.Unfreeze), output
+	// 如果加不到边上， 就直接加到node上
+	if forwardOutput > 0 {
+		f.Unfreeze[len(f.Unfreeze)-1].output += forwardOutput
+	}
+	return output
 }
 
-// MergeFreeze 把一串节点冻结
-// 先找出最长匹配后缀 然后把toFreeze连上去
-func (f *Fst) MergeFreeze(toFreeze []*Node) {
-	node1, node2 := f.longestSuffix(toFreeze)
-	node1.link(node2)
-}
-
-func (f *Fst) longestSuffix(toFreeze []*Node) (*Node, *Node) {
-	word := Map(func(node *Node) byte { return node.val }, toFreeze)
-	suffixHash := SuffixHash(toFreeze)
-	for idx, hash := range suffixHash {
-		if nodes, ok := f.TailHash[hash]; ok {
-			for _, node := range nodes {
-				if _, ok2 := f.search(node, word[idx:]); ok2 {
-					return toFreeze[idx], node
-				}
-			}
+func (f *Fst) freeze(n int) {
+	suffixHash := SuffixHash(f.preWord[n:])
+	for i, char := range f.preWord[n:] {
+		if i == 0 {
+			continue
+		}
+		hash := suffixHash[i]
+		node := f.Unfreeze[n+i]
+		if tail, ok := f.GetTail(hash, f.preWord[n+i:]); ok {
+			node.next[char].node = tail
+			return
+		}
+		if node.next[char].output == 0 {
+			f.SetTailCache(hash, f.Unfreeze[n+i])
 		}
 	}
-	return toFreeze[len(toFreeze)-1], &f.DummyTail
 }
 
-func SuffixHash(toFreeze []*Node) []Hash {
-	hash := Hash(0)
-	ans := make([]Hash, len(toFreeze))
-	for i := len(toFreeze) - 1; i >= 0; i++ {
-		hash = hash.Append(toFreeze[i].val)
-		ans[i] = hash
+func (f *Fst) SetTailCache(hash Hash, node *Node) {
+	f.TailHash[hash] = append(f.TailHash[hash], node)
+}
+
+func (f *Fst) GetTail(hash Hash, word []byte) (*Node, bool) {
+	for _, node := range f.TailHash[hash] {
+		if _, ok := f.search(node, word); ok {
+			return node, true
+		}
 	}
-	return ans
+	return nil, false
 }
