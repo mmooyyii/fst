@@ -1,5 +1,3 @@
-//go:build debugMode
-
 package fst
 
 import (

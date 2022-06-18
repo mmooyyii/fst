@@ -1,9 +1,12 @@
 package fst
 
 import (
-	"context"
+	"bytes"
 	"fmt"
+	"math/rand"
+	"sort"
 	"testing"
+	"time"
 )
 
 //func FuzzBuild(f *testing.F) {
@@ -15,6 +18,32 @@ import (
 //
 //	})
 //}
+
+func increasingBytes(n int) [][]byte {
+	tmp := make(map[string]struct{})
+	for i := 0; i < n; i++ {
+		tmp[string(randomBytes())] = struct{}{}
+	}
+	ans := make([][]byte, 0)
+	for k := range tmp {
+		if len(k) > 0 {
+			ans = append(ans, []byte(k))
+		}
+	}
+	sort.Slice(ans, func(i, j int) bool {
+		return bytes.Compare(ans[i], ans[j]) == -1
+	})
+	return ans
+}
+
+func randomBytes() []byte {
+	n := rand.Intn(5)
+	ans := make([]byte, n)
+	for i := 0; i < n; i++ {
+		ans[i] = byte(rand.Intn(20))
+	}
+	return ans
+}
 
 func TestNewFst(t *testing.T) {
 	fst := NewFst()
@@ -35,12 +64,23 @@ func TestNewFst(t *testing.T) {
 
 func TestNewFst2(t *testing.T) {
 	fst := NewFst()
-	fst.Set([]byte("abc"), 999)
-	fst.Set([]byte("adc"), 2)
-	fst.Set([]byte("z"), 2)
-	for v := range fst.FuzzySearch(context.Background(), []byte("...")) {
-		fmt.Println(v)
-	}
+	fst.Set([]byte("aa"), 999)
+	fst.Set([]byte("ab"), 2)
+	fst.Set([]byte("abc"), 2)
+	fst.Set([]byte("b"), 2)
+	fst.Set([]byte("d"), 2)
+
 	//fst.debug()
 	////fmt.Println(1)
+}
+
+func TestBuild(t *testing.T) {
+	rand.Seed(time.Now().Unix())
+	fst := NewFst()
+	b := increasingBytes(3000)
+	fmt.Println(b)
+	for _, v := range b {
+		fst.Set(v, rand.Intn(1000))
+	}
+
 }

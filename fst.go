@@ -85,10 +85,11 @@ type Kv struct {
 }
 
 type RecursionStack struct {
+	node   *Node
+	index  int
 	trace  []byte
 	output int
 	stop   bool
-	node   *Node
 }
 
 func (f *Fst) FuzzySearch(ctx context.Context, pattern []byte) <-chan Kv {
@@ -162,6 +163,9 @@ func (f *Fst) PutOutput(n int, output int) int {
 func (f *Fst) freeze(n int) {
 	sh := suffixHash(f.preWord[n:])
 	for i, char := range f.preWord[n:] {
+		if i == 0 {
+			continue
+		}
 		hashValue := sh[i]
 		node := f.unfreeze[n+i]
 		if tail, ok := f.getTail(hashValue, f.preWord[n+i:]); ok {

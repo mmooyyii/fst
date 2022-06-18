@@ -28,3 +28,6 @@ graph = [{"from": "1", "to": "3", "char": 97, "output": 2}, {"from": "3", "to": 
 
 graph = [[i['from'], i['to'], chr(i['char']) + ':' + str(i['output'])] for i in graph]
 draw_graph(graph)
+
+
+
