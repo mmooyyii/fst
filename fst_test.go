@@ -27,15 +27,6 @@ func TestNewFst(t *testing.T) {
 	assert(output, 10, ok, true)
 }
 
-func TestBuild(t *testing.T) {
-	rand.Seed(time.Now().Unix())
-	fst := NewFst()
-	b := increasingBytes(300, 300)
-	for _, v := range b {
-		fst.Set(v, rand.Intn(1000))
-	}
-}
-
 func TestFuzzySearch(t *testing.T) {
 	fst := NewFst()
 	fst.Set([]byte("aa"), 999)
@@ -138,6 +129,15 @@ func TestSetOutput5(t *testing.T) {
 	fst.Set([]byte("is"), 7967)
 	fst.Set([]byte("k"), 1965)
 	fmt.Println(fst.Search([]byte("ecs")))
+}
+
+func TestFreeze(t *testing.T) {
+	fst := NewFst()
+	fst.Set([]byte("aqwertyuiop"), 1)
+	fst.Set([]byte("xqwertyuiop"), 1)
+	fst.Set([]byte("zzz"), 1)
+
+	fmt.Println(fst.Search([]byte("zzz")))
 }
 
 func TestEnsureSetWordKeepIncr(t *testing.T) {

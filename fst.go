@@ -34,23 +34,19 @@ func NewNode() *Node {
 }
 
 type Fst struct {
-	dummyHead Node             // 虚拟头节点
-	dummyTail Node             // 虚拟尾节点
-	count     int              // 总单词数
-	preWord   []byte           // 填加的单词必须单调递增， 所以记录上一个成功添加的字符串。
-	tailHash  map[hash][]*Node // 用于快速寻找最长的后缀
-	unfreeze  []*Node          // 未冻结的节点
+	dummyHead Node           // 虚拟头节点
+	preWord   []byte         // 填加的单词必须单调递增， 所以记录上一个成功添加的字符串。
+	tailHash  map[hash]*Node // 用于快速寻找最长的后缀
+	unfreeze  []*Node        // 未冻结的节点
 }
 
 func NewFst() *Fst {
 	head := NewNode()
-	tail := NewNode()
 	return &Fst{
 		dummyHead: *head,
-		dummyTail: *tail,
 		unfreeze:  []*Node{head},
 		preWord:   make([]byte, 0),
-		tailHash:  make(map[hash][]*Node, 0),
+		tailHash:  make(map[hash]*Node, 0),
 	}
 }
 
@@ -179,11 +175,11 @@ func (f *Fst) freeze(n int) {
 }
 
 func (f *Fst) setTailCache(hash hash, node *Node) {
-	f.tailHash[hash] = append(f.tailHash[hash], node)
+	f.tailHash[hash] = node
 }
 
 func (f *Fst) getTail(hash hash, word []byte) (*Node, bool) {
-	for _, node := range f.tailHash[hash] {
+	if node, ok := f.tailHash[hash]; ok {
 		if _, ok := f.search(node, word); ok {
 			return node, true
 		}

@@ -17,16 +17,17 @@ go get -u github.com/mmooyyii/fst
 ### benchmark
 
 ```
-go test bench=. benchmem=true -run=none
+go test -bench=. -benchmem=true -run=none
 ```
 
 ```shell
-yimo@YideMacBook-Pro fst % go test -bench=. -benchmem=true -run=none
 goos: darwin
 goarch: arm64
 pkg: github.com/mmooyyii/fst
-BenchmarkBuildFst-8            1        3085338625 ns/op        1584858312 B/op 30032963 allocs/op
-BenchmarkBuildMap-8            5         207924067 ns/op        114186686 B/op   1370124 allocs/op
-BenchmarkSearchFst-8     1667916               721.2 ns/op            11 B/op          0 allocs/op
-BenchmarkSearchMap-8     5168216               231.0 ns/op            11 B/op          0 allocs/op
+BenchmarkBuildFst-8            1        2122579750 ns/op        1216812328 B/op 24449745 allocs/op
+BenchmarkBuildMap-8            9         117583028 ns/op        76083436 B/op     832588 allocs/op
+BenchmarkSearchFst-8     1674333               735.0 ns/op            11 B/op          0 allocs/op
+BenchmarkSearchMap-8     4845972               247.6 ns/op            11 B/op          0 allocs/op
+PASS
+ok      github.com/mmooyyii/fst 25.901s
 ```
