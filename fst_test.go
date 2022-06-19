@@ -2,48 +2,13 @@ package fst
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"math/rand"
 	"sort"
 	"testing"
 	"time"
 )
-
-//func FuzzBuild(f *testing.F) {
-//	testcases := []string{"Hello, world", " ", "!12345"}
-//	for _, tc := range testcases {
-//		f.Add(tc) // Use f.Add to provide a seed corpus
-//	}
-//	f.Fuzz(func(t *testing.T, orig []string) {
-//
-//	})
-//}
-
-func increasingBytes(wordSize, sliceSize int) [][]byte {
-	tmp := make(map[string]struct{})
-	for i := 0; i < sliceSize; i++ {
-		tmp[string(randomBytes(wordSize))] = struct{}{}
-	}
-	ans := make([][]byte, 0)
-	for k := range tmp {
-		if len(k) > 0 {
-			ans = append(ans, []byte(k))
-		}
-	}
-	sort.Slice(ans, func(i, j int) bool {
-		return bytes.Compare(ans[i], ans[j]) == -1
-	})
-	return ans
-}
-
-func randomBytes(length int) []byte {
-	n := rand.Intn(length)
-	ans := make([]byte, n)
-	for i := 0; i < n; i++ {
-		ans[i] = byte('a' + rand.Intn(20))
-	}
-	return ans
-}
 
 func TestNewFst(t *testing.T) {
 	fst := NewFst()
@@ -62,18 +27,6 @@ func TestNewFst(t *testing.T) {
 	assert(output, 10, ok, true)
 }
 
-func TestNewFst2(t *testing.T) {
-	fst := NewFst()
-	fst.Set([]byte("aa"), 999)
-	fst.Set([]byte("ab"), 2)
-	fst.Set([]byte("abc"), 2)
-	fst.Set([]byte("b"), 2)
-	fst.Set([]byte("d"), 2)
-
-	//fst.debug()
-	////fmt.Println(1)
-}
-
 func TestBuild(t *testing.T) {
 	rand.Seed(time.Now().Unix())
 	fst := NewFst()
@@ -81,6 +34,57 @@ func TestBuild(t *testing.T) {
 	for _, v := range b {
 		fst.Set(v, rand.Intn(1000))
 	}
+}
+
+func TestFuzzySearch(t *testing.T) {
+	fst := NewFst()
+	fst.Set([]byte("aa"), 999)
+	fst.Set([]byte("ab"), 2)
+	fst.Set([]byte("abc"), 12390)
+	fst.Set([]byte("b"), 2)
+	fst.Set([]byte("dqwer"), 2)
+	for kv := range fst.FuzzySearch(context.Background(), []byte(".b.")) {
+		assert(kv.Word, []byte("abc"))
+		assert(kv.Output, 12390)
+	}
+	count := 0
+	for range fst.FuzzySearch(context.Background(), []byte("dqwe")) {
+		count += 1
+	}
+	assert(count, 0)
+}
+
+func TestStop(t *testing.T) {
+	fst := NewFst()
+	fst.Set([]byte("a"), 999)
+	fst.Set([]byte("b"), 2)
+	fst.Set([]byte("c"), 12390)
+	fst.Set([]byte("d"), 2)
+	fst.Set([]byte("e"), 2)
+	ctx, done := context.WithCancel(context.Background())
+	defer done()
+	count := 0
+	for kv := range fst.FuzzySearch(ctx, []byte(".")) {
+		fmt.Println(kv)
+		done()
+		count += 1
+	}
+	assert(count, 1)
+}
+
+func TestStop2(t *testing.T) {
+	fst := NewFst()
+	fst.Set([]byte("abc"), 999)
+	fst.Set([]byte("abz"), 999)
+	ctx, done := context.WithCancel(context.Background())
+	defer done()
+	count := 0
+	for kv := range fst.FuzzySearch(ctx, []byte("ab.")) {
+		fmt.Println(kv)
+		done()
+		count += 1
+	}
+	assert(count, 1)
 }
 
 func TestSetOutput(t *testing.T) {
@@ -136,6 +140,17 @@ func TestSetOutput5(t *testing.T) {
 	fmt.Println(fst.Search([]byte("ecs")))
 }
 
+func TestEnsureSetWordKeepIncr(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+
+		}
+	}()
+	fst := NewFst()
+	fst.Set([]byte("z"), 3)
+	fst.Set([]byte("a"), 1)
+}
+
 func TestFuzz(t *testing.T) {
 	var seed int64
 	var mock map[string]int
@@ -165,4 +180,30 @@ func TestFuzz(t *testing.T) {
 			assert(target, answer)
 		}
 	}
+}
+
+func increasingBytes(wordSize, sliceSize int) [][]byte {
+	tmp := make(map[string]struct{})
+	for i := 0; i < sliceSize; i++ {
+		tmp[string(randomBytes(wordSize))] = struct{}{}
+	}
+	ans := make([][]byte, 0)
+	for k := range tmp {
+		if len(k) > 0 {
+			ans = append(ans, []byte(k))
+		}
+	}
+	sort.Slice(ans, func(i, j int) bool {
+		return bytes.Compare(ans[i], ans[j]) == -1
+	})
+	return ans
+}
+
+func randomBytes(length int) []byte {
+	n := rand.Intn(length)
+	ans := make([]byte, n)
+	for i := 0; i < n; i++ {
+		ans[i] = byte('a' + rand.Intn(20))
+	}
+	return ans
 }

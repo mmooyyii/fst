@@ -6,10 +6,16 @@ import (
 )
 
 type Dict interface {
-	GetPre() []byte
-	Set(word []byte, output int) error
+	Set(word []byte, output int)
 	Search(word []byte) (int, bool)
-	FuzzySearch(ctx context.Context, pattern []byte) <-chan []byte
+	FuzzySearch(ctx context.Context, pattern []byte) <-chan Kv
+}
+
+const WildCard = '.'
+
+type Kv struct {
+	Word   []byte
+	Output int
 }
 
 type Edge struct {
@@ -67,21 +73,12 @@ func (f *Fst) Set(word []byte, output int) {
 	f.preWord = word
 }
 
-func (f *Fst) GetPreWord() []byte { return f.preWord }
-
 func (f *Fst) Search(word []byte) (int, bool) {
 	return f.search(&f.dummyHead, word)
 }
 
-const WildCard = '.'
-
-type Kv struct {
-	Word   []byte
-	Output int
-}
-
 func (f *Fst) FuzzySearch(ctx context.Context, pattern []byte) <-chan Kv {
-	ans := make(chan Kv, 100)
+	ans := make(chan Kv, 0)
 	go func() {
 		f.fuzzySearch(ctx, &f.dummyHead, pattern, 0, []byte{}, 0, false, ans)
 		close(ans)

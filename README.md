@@ -15,3 +15,11 @@ go get -u github.com/mmooyyii/fst
 ```
 
 ### benchmark
+
+```
+go test bench=. benchmem=true -run=none
+```
+
+```shell
+
+```
