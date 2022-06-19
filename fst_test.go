@@ -40,7 +40,7 @@ func randomBytes() []byte {
 	n := rand.Intn(5)
 	ans := make([]byte, n)
 	for i := 0; i < n; i++ {
-		ans[i] = byte(rand.Intn(20))
+		ans[i] = byte('a' + rand.Intn(20))
 	}
 	return ans
 }
@@ -82,5 +82,64 @@ func TestBuild(t *testing.T) {
 	for _, v := range b {
 		fst.Set(v, rand.Intn(1000))
 	}
+}
 
+func TestSetOutput(t *testing.T) {
+	fst := NewFst()
+	fst.Set([]byte("m"), 99)
+	fst.Set([]byte("ma"), 100)
+	fst.Set([]byte("mb"), 10)
+
+	fmt.Println(fst.Search([]byte("m")))
+	fmt.Println(fst.Search([]byte("ma")))
+	fmt.Println(fst.Search([]byte("mb")))
+}
+
+func TestSetOutput2(t *testing.T) {
+	fst := NewFst()
+	fst.Set([]byte("a"), 4)
+	fst.Set([]byte("eb"), 3)
+	fst.Set([]byte("ef"), 2)
+	fst.Set([]byte("eq"), 1)
+	v, ok := fst.Search([]byte("eb"))
+	assert(3, v)
+	assert(ok, true)
+}
+
+func TestSetOutput3(t *testing.T) {
+	fst := NewFst()
+	fst.Set([]byte("pk"), 3)
+	fst.Set([]byte("pmj"), 2)
+	fst.Set([]byte("pmp"), 1)
+	fmt.Println(fst.Search([]byte("pk")))
+}
+
+func TestDuiPai(t *testing.T) {
+	var seed int64
+	var mock map[string]int
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("seed:", seed)
+			fmt.Println(mock)
+			panic(r)
+		}
+	}()
+	for i := 0; i < 1000; i++ {
+		seed = time.Now().UnixMicro()
+		rand.Seed(int64(seed))
+		fst := NewFst()
+		mock = map[string]int{}
+		b := increasingBytes(1000)
+		for _, v := range b {
+			output := rand.Intn(10000)
+			fst.Set(v, output)
+			mock[string(v)] = output
+		}
+		for _, v := range b {
+			target := mock[string(v)]
+			answer, ok := fst.Search(v)
+			assert(ok, true)
+			assert(target, answer)
+		}
+	}
 }

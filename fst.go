@@ -3,10 +3,7 @@ package fst
 import (
 	"bytes"
 	"context"
-	"sync/atomic"
 )
-
-var incr int32
 
 type Dict interface {
 	GetPre() []byte
@@ -22,13 +19,12 @@ type Edge struct {
 }
 
 type Node struct {
-	incr   int32
 	next   map[byte]*Edge // 记录下一个节点的位置
 	output int            // 只有在这是最后一个点的时候，才加上这里的output
 }
 
 func NewNode() *Node {
-	return &Node{next: make(map[byte]*Edge, 0), incr: atomic.AddInt32(&incr, 1)}
+	return &Node{next: make(map[byte]*Edge, 0)}
 }
 
 type Fst struct {
@@ -58,7 +54,7 @@ func (f *Fst) Set(word []byte, output int) {
 	}
 	n := longestPrefix(f.preWord, word) + 1
 	output = f.PutOutput(n-1, output)
-	f.freeze(n - 1)
+	//f.freeze(n - 1)
 	f.unfreeze = f.unfreeze[:n]
 	preNode := f.unfreeze[n-1]
 	for i, char := range word[n-1:] {
@@ -82,14 +78,6 @@ const WildCard = '.'
 type Kv struct {
 	Word   []byte
 	Output int
-}
-
-type RecursionStack struct {
-	node   *Node
-	index  int
-	trace  []byte
-	output int
-	stop   bool
 }
 
 func (f *Fst) FuzzySearch(ctx context.Context, pattern []byte) <-chan Kv {
@@ -144,7 +132,10 @@ func (f *Fst) PutOutput(n int, output int) int {
 		v := f.unfreeze[i]
 		edge := v.next[char]
 		if forwardOutput > 0 {
-			edge.output += forwardOutput
+			for _, e := range v.next {
+				e.output += forwardOutput
+			}
+			forwardOutput = 0
 		}
 		if edge.output <= output {
 			output -= edge.output
@@ -152,11 +143,16 @@ func (f *Fst) PutOutput(n int, output int) int {
 			edge.output, forwardOutput = output, edge.output-output
 			output = 0
 		}
+		if edge.stop {
+			edge.node.output += forwardOutput
+		}
 	}
-	// 如果加不到边上， 就直接加到node上
-	if forwardOutput > 0 {
-		f.unfreeze[len(f.unfreeze)-1].output += forwardOutput
+	if forwardOutput > 0 && n < len(f.preWord) {
+		for _, e := range f.unfreeze[n].next {
+			e.output += forwardOutput
+		}
 	}
+	//f.unfreeze[n].output += forwardOutput
 	return output
 }
 
@@ -204,9 +200,9 @@ func (f *Fst) search(curNode *Node, word []byte) (int, bool) {
 			stop = edge.stop
 		}
 	}
-	sum += curNode.output
 	if !stop {
 		return 0, false
 	}
+	sum += curNode.output
 	return sum, true
 }
