@@ -54,7 +54,7 @@ func (f *Fst) Set(word []byte, output int) {
 	}
 	n := longestPrefix(f.preWord, word) + 1
 	output = f.PutOutput(n-1, output)
-	//f.freeze(n - 1)
+	f.freeze(n - 1)
 	f.unfreeze = f.unfreeze[:n]
 	preNode := f.unfreeze[n-1]
 	for i, char := range word[n-1:] {
@@ -152,25 +152,28 @@ func (f *Fst) PutOutput(n int, output int) int {
 			e.output += forwardOutput
 		}
 	}
-	//f.unfreeze[n].output += forwardOutput
 	return output
 }
 
 func (f *Fst) freeze(n int) {
 	sh := suffixHash(f.preWord[n:])
+	skipFirst := true
 	for i, char := range f.preWord[n:] {
-		if i == 0 {
-			continue
-		}
 		hashValue := sh[i]
 		node := f.unfreeze[n+i]
+		if node.next[char].output+node.output != 0 {
+			continue
+		}
+		if skipFirst {
+			skipFirst = false
+			continue
+		}
 		if tail, ok := f.getTail(hashValue, f.preWord[n+i:]); ok {
-			c := f.preWord[n+i-1]
-			f.unfreeze[n+i-1].next[c].node = tail
+			f.unfreeze[n+i].next[char].node = tail.next[char].node
 			return
 		}
-		if node.next[char].output == 0 {
-			f.setTailCache(hashValue, f.unfreeze[n+i])
+		if node.next[char].output+node.output == 0 {
+			f.setTailCache(hashValue, node)
 		}
 	}
 }

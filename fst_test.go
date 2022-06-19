@@ -19,10 +19,10 @@ import (
 //	})
 //}
 
-func increasingBytes(n int) [][]byte {
+func increasingBytes(wordSize, sliceSize int) [][]byte {
 	tmp := make(map[string]struct{})
-	for i := 0; i < n; i++ {
-		tmp[string(randomBytes())] = struct{}{}
+	for i := 0; i < sliceSize; i++ {
+		tmp[string(randomBytes(wordSize))] = struct{}{}
 	}
 	ans := make([][]byte, 0)
 	for k := range tmp {
@@ -36,8 +36,8 @@ func increasingBytes(n int) [][]byte {
 	return ans
 }
 
-func randomBytes() []byte {
-	n := rand.Intn(5)
+func randomBytes(length int) []byte {
+	n := rand.Intn(length)
 	ans := make([]byte, n)
 	for i := 0; i < n; i++ {
 		ans[i] = byte('a' + rand.Intn(20))
@@ -77,8 +77,7 @@ func TestNewFst2(t *testing.T) {
 func TestBuild(t *testing.T) {
 	rand.Seed(time.Now().Unix())
 	fst := NewFst()
-	b := increasingBytes(3000)
-	fmt.Println(b)
+	b := increasingBytes(300, 300)
 	for _, v := range b {
 		fst.Set(v, rand.Intn(1000))
 	}
@@ -89,10 +88,15 @@ func TestSetOutput(t *testing.T) {
 	fst.Set([]byte("m"), 99)
 	fst.Set([]byte("ma"), 100)
 	fst.Set([]byte("mb"), 10)
-
-	fmt.Println(fst.Search([]byte("m")))
-	fmt.Println(fst.Search([]byte("ma")))
-	fmt.Println(fst.Search([]byte("mb")))
+	v, ok := fst.Search([]byte("m"))
+	assert(99, v)
+	assert(ok, true)
+	v, ok = fst.Search([]byte("ma"))
+	assert(100, v)
+	assert(ok, true)
+	v, ok = fst.Search([]byte("mb"))
+	assert(10, v)
+	assert(ok, true)
 }
 
 func TestSetOutput2(t *testing.T) {
@@ -114,7 +118,25 @@ func TestSetOutput3(t *testing.T) {
 	fmt.Println(fst.Search([]byte("pk")))
 }
 
-func TestDuiPai(t *testing.T) {
+func TestSetOutput4(t *testing.T) {
+	fst := NewFst()
+	fst.Set([]byte("er"), 5199)
+	fst.Set([]byte("hj"), 3901)
+	fst.Set([]byte("hr"), 6310)
+	fst.Set([]byte("o"), 1779)
+	fmt.Println(fst.Search([]byte("hj")))
+}
+
+func TestSetOutput5(t *testing.T) {
+	fst := NewFst()
+	fst.Set([]byte("ecs"), 1399)
+	fst.Set([]byte("es"), 879)
+	fst.Set([]byte("is"), 7967)
+	fst.Set([]byte("k"), 1965)
+	fmt.Println(fst.Search([]byte("ecs")))
+}
+
+func TestFuzz(t *testing.T) {
 	var seed int64
 	var mock map[string]int
 	defer func() {
@@ -124,12 +146,13 @@ func TestDuiPai(t *testing.T) {
 			panic(r)
 		}
 	}()
-	for i := 0; i < 1000; i++ {
+	for i := 0; i < 100; i++ {
 		seed = time.Now().UnixMicro()
-		rand.Seed(int64(seed))
+		//seed = int64(1655613820112461)
+		rand.Seed(seed)
 		fst := NewFst()
 		mock = map[string]int{}
-		b := increasingBytes(1000)
+		b := increasingBytes(100, 100)
 		for _, v := range b {
 			output := rand.Intn(10000)
 			fst.Set(v, output)
