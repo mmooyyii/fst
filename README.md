@@ -25,8 +25,8 @@ yimo@YideMacBook-Pro fst % go test -bench=. -benchmem=true -run=none
 goos: darwin
 goarch: arm64
 pkg: github.com/mmooyyii/fst
-BenchmarkBuildFst-8            1        3184254084 ns/op        1586697920 B/op 30075596 allocs/op
-BenchmarkBuildMap-8            4         256846229 ns/op        123745708 B/op   1505547 allocs/op
-PASS
-ok      github.com/mmooyyii/fst 7.002s
+BenchmarkBuildFst-8            1        3085338625 ns/op        1584858312 B/op 30032963 allocs/op
+BenchmarkBuildMap-8            5         207924067 ns/op        114186686 B/op   1370124 allocs/op
+BenchmarkSearchFst-8     1667916               721.2 ns/op            11 B/op          0 allocs/op
+BenchmarkSearchMap-8     5168216               231.0 ns/op            11 B/op          0 allocs/op
 ```
