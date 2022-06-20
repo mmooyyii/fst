@@ -54,7 +54,7 @@ func (f *Fst) Set(word []byte, output int) {
 	if bytes.Compare(word, f.preWord) != 1 {
 		panic("word must be increasing")
 	}
-	if bytes.Contains(word, []byte{WildCard}) {
+	if bytes.IndexByte(word, WildCard) != -1 {
 		panic("wildcard is not allow")
 	}
 	n := longestPrefix(f.preWord, word) + 1
