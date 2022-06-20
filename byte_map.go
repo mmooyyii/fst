@@ -11,37 +11,57 @@ type byteMap interface {
 	upgrade() byteMap
 }
 
-type pair struct {
-	key  byte
-	node *Edge
-}
-
 type smallByteMap struct {
 	key  []byte
 	edge []*Edge
 }
 
 func (s *smallByteMap) addEdge(key byte, val *Edge) {
+	idx := s.bisectLeft(key)
+	if s.key[idx] != key {
+		s.key = append(s.key, 0)
+		copy(s.key[idx+1:], s.key[idx:])
+		s.key[idx] = key
+
+		s.edge = append(s.edge, nil)
+		copy(s.edge[idx+1:], s.edge[idx:])
+		s.edge[idx] = val
+	} else {
+		s.edge[idx] = val
+	}
 }
 
 func (s *smallByteMap) setNode(key byte, val *Node) {
-	//TODO implement me
-	panic("implement me")
+	if edge, ok := s.getEdge(key); !ok {
+		panic("keyError: " + string(key))
+	} else {
+		edge.node = val
+	}
 }
 
 func (s *smallByteMap) addOutput(key byte, val int) {
-	//TODO implement me
-	panic("implement me")
+	if edge, ok := s.getEdge(key); !ok {
+		panic("keyError: " + string(key))
+	} else {
+		edge.output += val
+	}
 }
 
 func (s *smallByteMap) getEdge(key byte) (*Edge, bool) {
-	//TODO implement me
-	panic("implement me")
+	idx := s.bisectLeft(key)
+	if s.key[idx] != key {
+		return nil, false
+	} else {
+		return s.edge[key], true
+	}
 }
 
 func (s *smallByteMap) forloop() map[byte]*Edge {
-	//TODO implement me
-	panic("implement me")
+	ans := make(map[byte]*Edge, len(s.key))
+	for i, key := range s.key {
+		ans[key] = s.edge[i]
+	}
+	return ans
 }
 
 func (s *smallByteMap) bisectLeft(key byte) int {
@@ -58,9 +78,12 @@ func (s *smallByteMap) bisectLeft(key byte) int {
 	return l
 }
 
+const UpgradeThreshold = 100 // 暂时不知道选多少合适， 用压测确定
 func (s *smallByteMap) upgrade() byteMap {
-	//TODO implement me
-	panic("implement me")
+	if len(s.key) < UpgradeThreshold {
+		return s
+	}
+	return s
 }
 
 type bigByteMap struct {
