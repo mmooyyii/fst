@@ -25,12 +25,12 @@ type Edge struct {
 }
 
 type Node struct {
-	next   map[byte]*Edge // 记录下一个节点的位置
-	output int            // 只有在这是最后一个点的时候，才加上这里的output
+	next   ByteMap // 记录下一个节点的位置
+	output int     // 只有在这是最后一个点的时候，才加上这里的output
 }
 
 func NewNode() *Node {
-	return &Node{next: make(map[byte]*Edge, 0)}
+	return &Node{next: NewByteMap()}
 }
 
 type Fst struct {
@@ -64,7 +64,7 @@ func (f *Fst) Set(word []byte, output int) {
 	preNode := f.unfreeze[n-1]
 	for i, char := range word[n-1:] {
 		node := NewNode()
-		preNode.next[char] = &Edge{node: node, output: output, stop: i+n == len(word)}
+		preNode.next.setEdge(char, &Edge{node: node, output: output, stop: i+n == len(word)})
 		preNode = node
 		output = 0
 		f.unfreeze = append(f.unfreeze, node)
@@ -101,15 +101,15 @@ func (f *Fst) fuzzySearch(ctx context.Context, node *Node, pattern []byte, idx i
 	}
 	char := pattern[idx]
 	if char == WildCard {
-		for anyChar, edge := range node.next {
-			trace = append(trace, anyChar)
-			if !f.fuzzySearch(ctx, edge.node, pattern, idx+1, trace, output+edge.output, edge.stop, c) {
+		for _, pair := range node.next.forloop() {
+			trace = append(trace, pair.byte)
+			if !f.fuzzySearch(ctx, pair.edge.node, pattern, idx+1, trace, output+pair.edge.output, pair.edge.stop, c) {
 				return false
 			}
 			trace = trace[:len(trace)-1]
 		}
 	} else {
-		if edge, ok := node.next[char]; !ok {
+		if edge, ok := node.next.getEdge(char); !ok {
 			return true
 		} else {
 			trace = append(trace, char)
@@ -126,10 +126,13 @@ func (f *Fst) PutOutput(n int, output int) int {
 	forwardOutput := 0
 	for i, char := range f.preWord[:n] {
 		v := f.unfreeze[i]
-		edge := v.next[char]
+		edge, ok := v.next.getEdge(char)
+		if !ok {
+			panic("internal error")
+		}
 		if forwardOutput > 0 {
-			for _, e := range v.next {
-				e.output += forwardOutput
+			for _, e := range v.next.forloop() {
+				e.edge.output += forwardOutput
 			}
 			forwardOutput = 0
 		}
@@ -144,8 +147,8 @@ func (f *Fst) PutOutput(n int, output int) int {
 		}
 	}
 	if forwardOutput > 0 && n < len(f.preWord) {
-		for _, e := range f.unfreeze[n].next {
-			e.output += forwardOutput
+		for _, e := range f.unfreeze[n].next.forloop() {
+			e.edge.output += forwardOutput
 		}
 	}
 	return output
@@ -157,7 +160,11 @@ func (f *Fst) freeze(n int) {
 	for i, char := range f.preWord[n:] {
 		hashValue := sh[i]
 		node := f.unfreeze[n+i]
-		if node.next[char].output+node.output != 0 {
+		edge, ok := node.next.getEdge(char)
+		if !ok {
+			panic("internal error")
+		}
+		if edge.output+node.output != 0 {
 			continue
 		}
 		if skipFirst {
@@ -165,12 +172,14 @@ func (f *Fst) freeze(n int) {
 			continue
 		}
 		if tail, ok := f.getTail(hashValue, f.preWord[n+i:]); ok {
-			f.unfreeze[n+i].next[char].node = tail.next[char].node
+			e, ok := tail.next.getEdge(char)
+			if !ok {
+				panic("internal error")
+			}
+			f.unfreeze[n+i].next.setNode(char, e.node)
 			return
 		}
-		if node.next[char].output+node.output == 0 {
-			f.setTailCache(hashValue, node)
-		}
+		f.setTailCache(hashValue, node)
 	}
 }
 
@@ -191,7 +200,7 @@ func (f *Fst) search(curNode *Node, word []byte) (int, bool) {
 	sum := 0
 	var stop bool
 	for _, char := range word {
-		if edge, ok := curNode.next[char]; !ok {
+		if edge, ok := curNode.next.getEdge(char); !ok {
 			return 0, false
 		} else {
 			curNode = edge.node
