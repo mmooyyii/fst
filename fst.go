@@ -34,10 +34,12 @@ func NewNode() *Node {
 }
 
 type Fst struct {
-	dummyHead Node           // 虚拟头节点
-	preWord   []byte         // 填加的单词必须单调递增， 所以记录上一个成功添加的字符串。
-	tailHash  map[hash]*Node // 用于快速寻找最长的后缀
-	unfreeze  []*Node        // 未冻结的节点
+	dummyHead       Node           // 虚拟头节点
+	preWord         []byte         // 填加的单词必须单调递增， 所以记录上一个成功添加的字符串。
+	tailHash        map[hash]*Node // 用于快速寻找最长的后缀
+	unfreeze        []*Node        // 未冻结的节点
+	PreNoOutputTail int            // 前一个字符串中, 没有任何output的后缀
+
 }
 
 func NewFst() *Fst {
@@ -62,6 +64,8 @@ func (f *Fst) Set(word []byte, output int) {
 	f.freeze(n - 1)
 	f.unfreeze = f.unfreeze[:n]
 	preNode := f.unfreeze[n-1]
+	f.PreNoOutputTail = n - 1
+
 	for i, char := range word[n-1:] {
 		node := NewNode()
 		preNode.next[char] = &Edge{node: node, output: output, stop: i+n == len(word)}
@@ -152,6 +156,9 @@ func (f *Fst) PutOutput(n int, output int) int {
 }
 
 func (f *Fst) freeze(n int) {
+	if f.PreNoOutputTail > n {
+		n = f.PreNoOutputTail
+	}
 	sh := suffixHash(f.preWord[n:])
 	skipFirst := true
 	for i, char := range f.preWord[n:] {

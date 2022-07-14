@@ -131,6 +131,17 @@ func TestSetOutput5(t *testing.T) {
 	fmt.Println(fst.Search([]byte("ecs")))
 }
 
+func TestSetOutput6(t *testing.T) {
+	fst := NewFst()
+	fst.Set([]byte("mcvau"), 1)
+	fst.Set([]byte("vjfv"), 2)
+	fst.Set([]byte("vjfvau"), 3)
+	fst.Set([]byte("zz"), 4)
+	output, ok := fst.Search([]byte("vjfvau"))
+	assert(ok, true)
+	assert(output, 3)
+}
+
 func TestFreeze(t *testing.T) {
 	fst := NewFst()
 	fst.Set([]byte("aqwertyuiop"), 1)
